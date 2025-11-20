@@ -1,3 +1,4 @@
+pandas
 # Telegram Bot Framework
 aiogram==3.13.1		#aiogram==3.10.0
 python-dotenv==1.0.0	#python-dotenv==1.0.1
@@ -9,7 +10,7 @@ aiofiles>=23.2.1	#aiofiles==23.2.1
 
 # Excel İşlemleri
 openpyxl==3.1.2
-pandas
+
 
 # Email Gönderimi
 aiosmtplib==2.0.0	#aiosmtplib==3.0.0
@@ -33,3 +34,4 @@ fastapi==0.104.1
 # Ngrok için (Opsiyonel)
 
 pyngrok==7.0.0
+
