@@ -2,6 +2,7 @@
 # Sütun genişliği otomatik olarak içeriğe göre ayarlanır, minimum 10, maksimum 25 birim
 # Tam asenkron uyumlu, performans iyileştirmeli
 # 16-11-2025 22:20
+# utils/excel_cleaner.py
 
 import asyncio
 from openpyxl import load_workbook, Workbook
@@ -13,7 +14,9 @@ import tempfile
 import os
 import aiofiles
 from pathlib import Path
-import pandas as pd
+#import pandas as pd
+from datetime import datetime
+
 from concurrent.futures import ThreadPoolExecutor
 
 # Sabitler
@@ -279,7 +282,7 @@ class AsyncExcelCleaner:
                 "headers": new_headers,
                 "row_count": row_count,
                 "original_headers": headers,
-                "processed_at": pd.Timestamp.now().isoformat()
+                "processed_at": datetime.now().isoformat()
             }
             
         except Exception as e:
