@@ -16,7 +16,6 @@ Komutlar → /dar komutunu ekle, tümünü bu maile atar)
 
 # handlers/reply_handler.py
 
-
 from aiogram import Router
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
@@ -52,9 +51,8 @@ class ReplyKeyboardManager:
                 [
                     KeyboardButton(text="🛑 DUR"),
                     KeyboardButton(text="Js"), 
-                    #KeyboardButton(text="Komutlar"),
-                    KeyboardButton(text="istatistik"),    #Admin işlemi
-                    KeyboardButton(text="Admin")                #Admin işlemi
+                    KeyboardButton(text="istatistik"),
+                    KeyboardButton(text="Admin")
                 ],
             ],
             resize_keyboard=True,
@@ -62,7 +60,7 @@ class ReplyKeyboardManager:
             input_field_placeholder="Bir işlem seçin veya Excel gönderin...",
         )
 
-async def _show_reply_keyboard(message: Message, title: str) -> None:
+async def _show_reply_keyboard(message: Message, title: str = "📋 Hızlı Erişim Menüsü") -> None:
     """
     Ortak reply keyboard gösterici
     """
@@ -100,37 +98,46 @@ async def _send_welcome_message(message: Message) -> None:
         ">admin > Grup dosyasını yükle, oluşan json yükle\n"
     )
     await message.answer(welcome_text)
-    await _show_reply_keyboard(message, "📋 Hızlı Erişim Menüsü")
+    await _show_reply_keyboard(message)
 
 # ---------------------------------------------------
-# MERKEZİ İPTAL FONKSİYONU - TÜM HANDLER'LAR İÇİN
+# MERKEZİ İPTAL FONKSİYONU - TÜM HANDLER'LAR İÇİN - 'ptal eder- temizler
 # ---------------------------------------------------
 
-async def cancel_all_operations(message: Message, state: FSMContext) -> None:
+async def cancel_all_operations(message: Message, state: FSMContext, clear_files: bool = False) -> None:
     """
     Tüm aktif işlemleri ve state'leri temizle
     Tüm handler'lar için ortak iptal fonksiyonu
+    
+    Args:
+        clear_files: Dosyaları da temizle (🛑 DUR için True)
     """
     current_state = await state.get_state()
     
     if current_state:
-        # State adını daha açıklayıcı göster
         state_name = current_state.split(":")[-1] if ":" in current_state else current_state
         await state.clear()
         
+        action_text = "İşlemler iptal edildi" + (" ve dosyalar temizlendi" if clear_files else "")
         await message.answer(
-            f"🛑 **Tüm işlemler İptal Edildi**\n\n"
+            f"🛑 **{action_text}**\n\n"
             f"• Aktif durum: `{state_name}`\n"
             f"• Temizlendi: ✅\n\n"
             f"Yeni bir işlem başlatabilirsiniz.",
             reply_markup=ReplyKeyboardManager.get_keyboard()
         )
     else:
+        action_text = "Zaten aktif işlem yok" + (" ve dosyalar temizlendi" if clear_files else "")
         await message.answer(
-            "✅ Zaten aktif işlem yok.\n"
-            "Yeni işlem başlatmak için menüyü kullanın.",
+            f"✅ {action_text}.\n"
+            f"Yeni işlem başlatmak için menüyü kullanın.",
             reply_markup=ReplyKeyboardManager.get_keyboard()
         )
+    
+    # Dosya temizleme gerekiyorsa
+    if clear_files:
+        from handlers.file_handler import clear_all
+        await clear_all(message)
 
 # ---------------------------------------------------
 # KOMUT HANDLER'LARI
@@ -138,52 +145,35 @@ async def cancel_all_operations(message: Message, state: FSMContext) -> None:
 
 @router.message(Command("oku"))
 async def cmd_oku(message: Message) -> None:
-    """/oku komutu - hoşgeldin mesajı ve keyboard"""
+    """oku komutu - hoşgeldin mesajı ve keyboard"""
     await _send_welcome_message(message)
 
 @router.message(Command("r", "klavye"))
 async def cmd_reply_keyboard(message: Message) -> None:
-    """/r veya /klavye - sadece reply keyboard menüsü"""
-    await _show_reply_keyboard(message, "📋 Hızlı Erişim Menüsü")
+    """r veya klavye - sadece reply keyboard menüsü"""
+    await _show_reply_keyboard(message)
 
-@router.message(Command("dur", "stop", "cancel", "iptal"))
-async def cmd_cancel(message: Message, state: FSMContext) -> None:
-    """Tüm iptal komutları - merkezi iptal"""
-    await cancel_all_operations(message, state)
 
 # ---------------------------------------------------
-#// BUTON HANDLER'LARI
-#// ---------------------------------------------------
+# BUTON HANDLER'LARI
+# ---------------------------------------------------
 
 @router.message(lambda m: m.text and m.text.lower() == "oku")
 async def handle_oku_button(message: Message) -> None:
     """oku butonu - hoşgeldin mesajı"""
     await _send_welcome_message(message)
 
-
-
-# Temizle = "Sadece manuel dosya temizliği yapar, aktif işleme dokunmaz"
-# Asla temizlenmez: logs/, groups/, CONFIG dosyaları
 @router.message(lambda m: m.text and m.text == "Temizle")
 async def handle_clear_button(message: Message) -> None:
     """Temizle butonu - sadece dosya temizliği"""
     from handlers.file_handler import clear_all
-    
     await message.answer("🧹 Sadece dosya temizliği yapıldı...")
     await clear_all(message)
 
-# 🛑 DUR = İşlem durdurur + State(geçici dosyalar) temizler
 @router.message(lambda m: m.text and m.text == "🛑 DUR")
 async def handle_stop_button(message: Message, state: FSMContext) -> None:
     """🛑 DUR butonu - tüm işlemleri iptal et + dosyaları temizle"""
-    # Önce state'i temizle
-    await cancel_all_operations(message, state)
-    
-    # Sonra dosyaları temizle
-    from handlers.file_handler import clear_all
-    await clear_all(message)
-
-
+    await cancel_all_operations(message, state, clear_files=True)
 
 @router.message(lambda m: m.text and m.text == "Kova")
 async def handle_kova_button(message: Message, state: FSMContext) -> None:
@@ -197,61 +187,32 @@ async def handle_pex_button(message: Message, state: FSMContext) -> None:
     from handlers.pex_handler import cmd_pex
     await cmd_pex(message, state)
 
-
 @router.message(lambda m: m.text and m.text == "Js")
 async def handle_json_button(message: Message, state: FSMContext) -> None:
     """Js butonu - JSON oluşturma"""
     from handlers.json_handler import handle_json_command
     await handle_json_command(message, state)
 
-
-
-
-# Detay butonu
 @router.message(lambda m: m.text and m.text == "istatistik")
 async def handle_stats_button(message: Message) -> None:
     """istatistik butonu - sistem istatistiklerini göster"""
-    from handlers.admin_handler import _show_admin_stats
+    from handlers.admin_handler import is_admin, _show_admin_stats
     
-    # Admin kontrolü yap
-    from handlers.admin_handler import is_admin
     if not is_admin(message.from_user.id):
         await message.answer("❌ Bu işlem için admin yetkisi gerekiyor.")
         return
     
-    # İstatistikleri göster
     await _show_admin_stats(message)
- 
 
 @router.message(lambda m: m.text and m.text == "Admin")
 async def handle_admin_button(message: Message) -> None:
     """Admin butonu - admin panelini açar"""
-    # Admin kontrolü yap
-    from handlers.admin_handler import is_admin
+    from handlers.admin_handler import is_admin, get_admin_keyboard
+    
     if not is_admin(message.from_user.id):
         await message.answer("❌ Bu işlem için admin yetkisi gerekiyor.")
         return
     
-    # Admin paneli klavyesini göster
-    from handlers.admin_handler import get_admin_keyboard
     keyboard = get_admin_keyboard()
-    
-    await message.answer(
-        "👑 **Admin Paneli**\n\nAşağıdaki seçeneklerden birini seçin:", 
-        reply_markup=keyboard
-    )
-
-  
-@router.message(lambda m: m.text and m.text == "Komutlar")
-async def handle_commands_button(message: Message) -> None:
-    """Komutlar butonu - komut listesi"""
-    from handlers.dar_handler import scan_handlers_for_commands
-    
-    scanned = scan_handlers_for_commands()
-    if not scanned:
-        await message.answer("❌ Komut bulunamadı.")
-        return
-    
-    lines = [f"{cmd} → {desc}" for cmd, desc in sorted(scanned.items())]
-    text = "\n".join(lines)
-    await message.answer(f"<pre>{text}</pre>", parse_mode="HTML")
+    await message.answer("👑 **Admin Paneli**\n\nAşağıdaki seçeneklerden birini seçin:", reply_markup=keyboard)
+	

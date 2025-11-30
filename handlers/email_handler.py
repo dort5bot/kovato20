@@ -10,7 +10,6 @@ Dosya durumunu gösteren yardımcı komut
 Reply keyboard desteği
 Bu şekilde iki aşamalı işleminiz tamamlanmış olur!
 """
-# handlers/email_handler.py - TAMAMEN DÜZELTİLMİŞ
 import logging
 import zipfile
 import tempfile
@@ -19,7 +18,8 @@ from aiogram import Router, types
 from aiogram.filters import Command
 
 from config import config
-from utils.mailer import send_email_with_attachment
+# Geriye uyumluluk fonksiyonları yerine doğrudan MailerV2 sınıfını import ediyoruz
+from utils.mailer import MailerV2
 
 # Logger tanımla
 logger = logging.getLogger(__name__)
@@ -29,6 +29,7 @@ router = Router(name="email_handlers")
 @router.message(Command("toplumaile", "toplumail", "tmail"))
 async def cmd_toplu_mail(message: types.Message):
     """Input ve Output dosyalarını ZIP yapıp PERSONAL_EMAIL'e gönderir"""
+    mailer = None
     try:
         await message.answer("📧 Input ve Output dosyaları ZIP yapılıp mail gönderiliyor...")
         
@@ -37,8 +38,12 @@ async def cmd_toplu_mail(message: types.Message):
             await message.answer("❌ Input veya Output klasörü boş. Önce /process komutu ile işlem yapın.")
             return
         
+        # Mailer oluştur ve başlat
+        mailer = MailerV2()
+        await mailer.start()
+        
         # ZIP oluştur ve gönder
-        success = await _create_and_send_zip()
+        success = await _create_and_send_zip(mailer)
         
         if success:
             await message.answer(
@@ -51,6 +56,10 @@ async def cmd_toplu_mail(message: types.Message):
     except Exception as e:
         logger.error(f"Toplu mail hatası: {e}")
         await message.answer("❌ İşlem sırasında hata oluştu.")
+    finally:
+        # Mailer'ı temizle
+        if mailer:
+            await mailer.stop()
 
 @router.message(Command("dosyalarıgöster", "dosyalar"))
 async def cmd_dosyalari_goster(message: types.Message):
@@ -69,7 +78,7 @@ async def _check_directories_have_files() -> bool:
     output_has_files = any(config.paths.OUTPUT_DIR.iterdir())
     return input_has_files or output_has_files
 
-async def _create_and_send_zip() -> bool:
+async def _create_and_send_zip(mailer: MailerV2) -> bool:
     """ZIP oluşturur ve mail gönderir"""
     zip_path = None
     try:
@@ -77,7 +86,7 @@ async def _create_and_send_zip() -> bool:
         if not zip_path:
             return False
         
-        return await _send_zip_email(zip_path)
+        return await _send_zip_email(mailer, zip_path)
         
     except Exception as e:
         logger.error(f"ZIP oluşturma/gönderme hatası: {e}")
@@ -118,7 +127,7 @@ async def _generate_zip_name() -> str:
         return first_input.stem[:6] if first_input.stem else "output_files"
     return "output_files"
 
-async def _send_zip_email(zip_path: Path) -> bool:
+async def _send_zip_email(mailer: MailerV2, zip_path: Path) -> bool:
     """ZIP dosyasını mail olarak gönderir"""
     if not config.email.PERSONAL_EMAIL:
         logger.error("PERSONAL_EMAIL tanımlı değil")
@@ -132,7 +141,7 @@ async def _send_zip_email(zip_path: Path) -> bool:
             "İyi çalışmalar,\nData_listesi_Hıdır"
         )
         
-        return await send_email_with_attachment(
+        return await mailer.send_email_with_attachment(
             [config.email.PERSONAL_EMAIL],
             subject,
             body,

@@ -1,6 +1,6 @@
 # handlers/dar_handler.py
 """
-v6+3
+v7+1 > 7
 # handlers/dar_handler.py
 komut aciklaması yok (commat_info)> aktif dönemde anlamlı 
 # Aiogram 3.x uyumlu
@@ -27,11 +27,6 @@ her dosya için başlık ekler .txt dosyası olarak gönderir.
 
 """
 
-# handlers/dar_handler.py
-"""
-v5 - Improved version
-Proje yedekleme ve komut tarama yardımcı handler
-"""
 
 import logging
 import os
@@ -45,6 +40,7 @@ from typing import Optional
 from aiogram import Router
 from aiogram.types import Message, FSInputFile
 from aiogram.filters import Command, CommandObject
+
 
 logger = logging.getLogger(__name__)
 
@@ -128,22 +124,7 @@ def find_file_or_folder(root_path: Path, target_name: str) -> Optional[Path]:
             return path
     return None
 
-"""
-# -------------------------------------
-# istenilen .py dosyalarını /dar t main.py
-# -------------------------------------
 
-def get_py_files_from_path(target_path: Path) -> list:
-    #Belirtilen yol'daki tüm .py dosyalarını recursive olarak bulur
-    py_files = []
-    if target_path.is_file() and target_path.suffix == ".py":
-        py_files.append(target_path)
-    elif target_path.is_dir():
-        for py_file in target_path.rglob("*.py"):
-            if not py_file.name.startswith(".") and "__pycache__" not in str(py_file):
-                py_files.append(py_file)
-    return sorted(py_files)
-"""
 # -------------------------------------
 # 🆕 Tüm dosya formatlarını destekleyen fonksiyon
 # -------------------------------------
@@ -196,20 +177,10 @@ async def dar_command(message: Message, command: CommandObject = None):
     
     # --- ID Sorgulama (/dar i)
     if mode == "i":
-        try:
-            from config import config
-            admin_ids_list = config.ADMIN_IDS
-        except (ImportError, AttributeError) as e:
-            logging.error(f"Config yükleme hatası: {e}")
-            admin_ids_list = []
-            
         user_id = message.from_user.id
-        is_admin = user_id in admin_ids_list
-        
         response = (
-            f"👤 Senin ID: <code>{user_id}</code>\n"
-            f"🛡️ Yetkili ID listesi: <code>{admin_ids_list}</code>\n"
-            f"✅ Durum: {'Yetkili' if is_admin else 'Kullanıcı'}"
+            f"👤 Senin Telegram ID: <code>{user_id}</code>"
+            #f"✅ Durum: {'Yetkili' if is_admin else 'Kullanıcı'}"
         )
         await message.answer(response, parse_mode="HTML")
         return

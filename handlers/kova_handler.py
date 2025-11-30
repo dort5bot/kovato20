@@ -30,7 +30,7 @@ class ProcessingStates(StatesGroup):
     waiting_for_file = State()
 
 # Sabitler
-CANCEL_COMMANDS = {"cancel", "iptal", "stop", "dur"}
+CANCEL_COMMANDS = {"cancel", "iptal", "stop", "dur", "🛑 dur"}
 EXCEL_EXTENSIONS = {'.xlsx', '.xls'}
 REQUIRED_COLUMNS = {"TARİH", "İL"}
 
