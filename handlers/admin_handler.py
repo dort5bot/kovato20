@@ -114,7 +114,6 @@ async def cmd_return_to_main(message: Message) -> None:
     )
 
 # Kullanıcı ID'sini gösterir
-
 @router.message(Command("id"))
 async def cmd_id(message: Message) -> None:
     """Kullanıcı ID'sini gösterir"""
@@ -130,22 +129,6 @@ async def cmd_id(message: Message) -> None:
     
     await message.answer(response)
     
-
-# Kullanıcı ID'sini gösterir
-@router.message(Command("id"))
-async def cmd_id(message: Message) -> None:
-    """Kullanıcı ID'sini gösterir"""
-    user_id = message.from_user.id
-    is_admin_user = is_admin(user_id)
-    
-    response = (
-        f"🆔 **Kullanıcı Bilgileri**\n\n"
-        f"**Senin ID:** `{user_id}`\n"
-        f"**Admin durumu:** {'✅ Yetkili' if is_admin_user else '❌ Yetkisiz'}\n"
-        f"**Toplam admin:** {len(config.bot.ADMIN_IDS)}"  # ✅ config.bot.ADMIN_IDS
-    )
-    
-    await message.answer(response)
 
 
 # ✅ REPLY MESSAGE HANDLER'LAR

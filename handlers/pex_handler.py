@@ -150,7 +150,7 @@ async def handle_process_pex(message: Message, state: FSMContext):
                 )
                 await message.answer("✅ Rapor PERSONAL_EMAIL adresine gönderildi.")
             else:
-                await message.answer("ℹ️ PERSONAL_EMAIL tanımlı değil, rapor maili gönderilmedi.")
+                await message.answer("ℹ️ PERSONAL_EMAIL tanımlı değil, rapor mail gönderilmedi.")
                          
         else:
             await message.answer(f"❌ İşlem başarısız: {result.get('error', 'Bilinmeyen hata')}")

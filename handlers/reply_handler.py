@@ -193,9 +193,9 @@ async def handle_json_button(message: Message, state: FSMContext) -> None:
     from handlers.json_handler import handle_json_command
     await handle_json_command(message, state)
 
-@router.message(lambda m: m.text and m.text == "istatistik")
+"""@router.message(lambda m: m.text and m.text == "istatistik")
 async def handle_stats_button(message: Message) -> None:
-    """istatistik butonu - sistem istatistiklerini göster"""
+     #istatistik butonu - sistem istatistiklerini göster
     from handlers.admin_handler import is_admin, _show_admin_stats
     
     if not is_admin(message.from_user.id):
@@ -206,7 +206,7 @@ async def handle_stats_button(message: Message) -> None:
 
 @router.message(lambda m: m.text and m.text == "Admin")
 async def handle_admin_button(message: Message) -> None:
-    """Admin butonu - admin panelini açar"""
+     #Admin butonu - admin panelini açar
     from handlers.admin_handler import is_admin, get_admin_keyboard
     
     if not is_admin(message.from_user.id):
@@ -216,3 +216,28 @@ async def handle_admin_button(message: Message) -> None:
     keyboard = get_admin_keyboard()
     await message.answer("👑 **Admin Paneli**\n\nAşağıdaki seçeneklerden birini seçin:", reply_markup=keyboard)
 	
+# reply_handler.py - DEĞİŞİKLİK YAPILACAK KISIMLAR
+"""
+# handle_stats_button fonksiyonunu değiştir
+@router.message(lambda m: m.text and m.text == "istatistik")
+async def handle_stats_button(message: Message) -> None:
+    """istatistik butonu - sistem istatistiklerini göster"""
+    # ❌ Buradaki admin kontrolünü KALDIRIYORUZ
+    # Admin kontrolü sadece admin_handler.py'de yapılacak
+    
+    # Direkt admin_handler'daki fonksiyonu çağır
+    from handlers.admin_handler import _show_admin_stats
+    await _show_admin_stats(message)
+
+# handle_admin_button fonksiyonunu değiştir
+@router.message(lambda m: m.text and m.text == "Admin")
+async def handle_admin_button(message: Message) -> None:
+    """Admin butonu - admin panelini açar"""
+    # ❌ Buradaki admin kontrolünü KALDIRIYORUZ
+    # Admin kontrolü sadece admin_handler.py'de yapılacak
+    
+    # Direkt admin_handler'daki fonksiyonu çağır
+    from handlers.admin_handler import get_admin_keyboard
+    keyboard = get_admin_keyboard()
+    await message.answer("👑 **Admin Paneli**\n\nAşağıdaki seçeneklerden birini seçin:", reply_markup=keyboard)
+    
