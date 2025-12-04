@@ -157,13 +157,7 @@ async def generate_email_report(email_results: List[Dict]) -> str:
             ""
         ]
         
-        #kontrol sonrası siline bilir
-        #if failed > 0:
-        #    report.append("**Hatalar:**")
-        #    for i, result in enumerate(email_results[:5], 1):
-        #        if not result.get("success", False):
-        #            report.append(f"{i}. {result.get('recipient', 'Bilinmeyen')}: {result.get('error', 'Bilinmeyen hata')}")
-        #  Daha güvelisi      
+        #  hata listesi      
         if failed > 0:
             report.append("**Hatalar:**")
             # Sadece başarısız sonuçları al ve ilk 7 tanesini listele
