@@ -83,11 +83,12 @@ async def _send_welcome_message(message: Message) -> None:
         "🔄 İşlem Akışı:\n"
         "⚡️ Exceli gruplara ayırmak\n"
         "• Excel'de 1. satırda 'TARİH' ve 'İL' sütunları olmalı\n"
+        "• başlık yoksa SUTUN harfini başlığa yaz (A, B,C ..)\n"
         "1️⃣ *Kova* tıkla Excel işlemini başlat\n"
         "2️⃣  excel dosyasını yükle, gönder \n\n"
         
         "⚡️ şehir isimli dosyaları gruplara göndermek\n"
-        "• PEX için dosya adı küçük harf (örn: ankara)\n"
+        "• PEX için dosya adı sadece şehir olmalı (örn: ankara)\n"
         "1️⃣ *Pex* tıkla işlemi başlat\n"
         "2️⃣ pdf yada excel dosyasını yükle\n"
         "3️⃣ tek tek dosyaları yükle, bitince /tamam 'ı tıkla \n\n"

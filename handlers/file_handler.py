@@ -1,11 +1,9 @@
 # handlers/file_handler.py
 """
-20/11/25
-Dosya Yönetim Handlers
-/files o → Output dosyalarını zip olarak indirir
-/files l → Log dosyalarını zip olarak indirir
-/clear → Input, Output, Groups ve temp dosyalarını temizler
-/clear log → Sadece log dosyalarını temizler
+/file o → Output dosyalarını zip olarak indir
+/file l → Log dosyalarını zip olarak indir
+/file c → Input/Output/Groups/temp dosyalarını temizler
+/file c l → Sadece log dosyalarını temizler
 """
 import os
 import shutil
@@ -19,11 +17,8 @@ from config import config
 router = Router(name="file_handlers")
 
 class FileManager:
-    """Dosya yönetimi için merkezi sınıf"""
-    
     @staticmethod
     async def create_zip_archive(files_dir: Path, archive_name: str) -> Path:
-        """Dosyaları zip arşivi olarak paketle"""
         if not files_dir.exists() or not any(files_dir.iterdir()):
             raise ValueError(f"Klasör boş veya mevcut değil: {files_dir}")
         
@@ -36,11 +31,9 @@ class FileManager:
         
         return zip_path
 
-    @staticmethod
+    """@staticmethod
     async def cleanup_directory(directory: Path, keep: list = None) -> tuple[int, int]:
-        """Klasördeki dosyaları temizle ve istatistik döndür"""
         keep = keep or []
-
         cleared_files = 0
         cleared_size = 0
         
@@ -59,10 +52,48 @@ class FileManager:
                         continue
         
         return cleared_files, cleared_size
-
+    """
+    
+    @staticmethod
+    async def cleanup_directory(directory: Path, keep: list = None, recursive: bool = True) -> tuple[int, int]:
+        keep = keep or []
+        cleared_files = 0
+        cleared_size = 0
+        
+        if not directory.exists():
+            return cleared_files, cleared_size
+        
+        # Hem dizindeki hem de alt dizinlerdeki dosyaları kontrol et
+        if recursive:
+            file_iterator = directory.rglob('*')
+        else:
+            file_iterator = directory.glob('*')
+        
+        for item_path in file_iterator:
+            # Sadece dosyaları kontrol et (dizinleri atla)
+            if not item_path.is_file():
+                continue
+                
+            # Keep listesindeki dosyaları atla
+            if item_path.name in keep:
+                continue
+            
+            try:
+                file_size = item_path.stat().st_size
+                item_path.unlink()
+                cleared_files += 1
+                cleared_size += file_size
+            except Exception as e:
+                print(f"Silinemedi {item_path}: {e}")
+                continue
+        
+        return cleared_files, cleared_size
+    
+    
+    
+    
     @staticmethod
     async def cleanup_temp_files() -> tuple[int, int]:
-        """Geçici dosyaları temizle"""
         cleared_files = 0
         cleared_size = 0
         temp_dir = Path(tempfile.gettempdir())
@@ -82,39 +113,41 @@ class FileManager:
         
         return cleared_files, cleared_size
 
-@router.message(Command("files"))
+@router.message(Command("file"))
 async def cmd_files(message: types.Message):
-    """Dosya yönetimi komutları"""
+    """Tüm dosya işlemleri tek komutta"""
     args = message.text.strip().split()[1:]
-    mode = args[0].lower() if args else ""
+    
+    if not args:
+        await show_files_help(message)
+        return
+    
+    mode = args[0].lower()
+    sub_mode = args[1].lower() if len(args) > 1 else ""
     
     if mode == "o":
         await download_output_files(message)
     elif mode == "l":
         await download_log_files(message)
+    elif mode == "c":
+        if sub_mode == "l":
+            await clear_logs(message)
+        else:
+            await clear_all(message)
     else:
         await show_files_help(message)
 
-@router.message(Command("clear"))
-async def cmd_clear(message: types.Message):
-    """Temizlik komutları"""
-    args = message.text.strip().split()[1:]
-    mode = args[0].lower() if args else ""
-    
-    if mode == "log":
-        await clear_logs(message)
-    else:
-        await clear_all(message)
-
 async def show_files_help(message: types.Message):
-    """Dosya komutları yardım mesajı"""
+    """Yeni yardım mesajı"""
     help_text = (
-        "📁 Dosya Yönetimi Komutları:\n\n"
-        "/files o → Output dosyalarını indir\n"
-        "/files l → Log dosyalarını indir\n\n"
-        "🧹 Temizlik Komutları:\n"
-        "/clear → Input/Output/Groups/temp dosyalarını temizler\n"
-        "/clear log → Sadece log dosyalarını temizler"
+        "📁 DOSYA YÖNETİMİ - Tek Komut\n\n"
+        "📥 İNDİRME:\n"
+        "/file o → Output dosyalarını indir (zip)\n"
+        "/file l → Log dosyalarını indir (zip)\n\n"
+        "🧹 TEMİZLİK:\n"
+        "/file c → Tüm dosyaları temizle\n"
+        "/file c l → Sadece logları temizle\n\n"
+        "📝 Not: Tüm işlemler tek /file komutu altında!"
     )
     await message.answer(help_text)
 
@@ -123,45 +156,45 @@ async def download_output_files(message: types.Message):
     try:
         user_id = message.from_user.id
         zip_path = await FileManager.create_zip_archive(
-            config.OUTPUT_DIR, 
+            config.paths.OUTPUT_DIR,
             f"output_files_{user_id}.zip"
         )
         
         await message.answer_document(
             types.FSInputFile(zip_path),
-            caption="📁 Output dosyaları"
+            caption="📁 Output dosyaları (zip)"
         )
         
         zip_path.unlink(missing_ok=True)
         
-    except ValueError:
-        await message.answer("❌ Output klasörü boş veya mevcut değil.")
-    except Exception:
-        await message.answer("❌ Output dosyaları indirilemedi.")
+    except ValueError as e:
+        await message.answer(f"❌ Output klasörü boş: {str(e)}")
+    except Exception as e:
+        await message.answer(f"❌ İndirme başarısız: {str(e)}")
 
 async def download_log_files(message: types.Message):
     """Log dosyalarını zip olarak indir"""
     try:
         user_id = message.from_user.id
         zip_path = await FileManager.create_zip_archive(
-            config.LOGS_DIR, 
+            config.paths.LOGS_DIR,
             f"log_files_{user_id}.zip"
         )
         
         await message.answer_document(
             types.FSInputFile(zip_path),
-            caption="📝 Log dosyaları"
+            caption="📝 Log dosyaları (zip)"
         )
         
         zip_path.unlink(missing_ok=True)
         
-    except ValueError:
-        await message.answer("❌ Log klasörü boş veya mevcut değil.")
-    except Exception:
-        await message.answer("❌ Log dosyaları indirilemedi.")
+    except ValueError as e:
+        await message.answer(f"❌ Log klasörü boş: {str(e)}")
+    except Exception as e:
+        await message.answer(f"❌ İndirme başarısız: {str(e)}")
 
 async def clear_all(message: types.Message):
-    """Output, Input, Groups ve temp temizliği"""
+    """Tüm dosyaları temizle"""
     try:
         total_files = 0
         total_size = 0
@@ -169,7 +202,7 @@ async def clear_all(message: types.Message):
         directories = [
             (config.paths.INPUT_DIR, "Input", []),
             (config.paths.OUTPUT_DIR, "Output", []),
-            # (config.paths.LOGS_DIR, "Output", []),    #LOGS dosyasınıda silmek istersen
+            (config.paths.LOGS_DIR, "Logs", []),
             (config.paths.GROUPS_DIR, "Groups", ["groups.json"])
         ]
         
@@ -191,38 +224,71 @@ async def clear_all(message: types.Message):
         
         if total_files > 0:
             result_text = (
-                f"🧹 Temizlik tamamlandı!\n\n"
+                f"🧹 TEMİZLİK TAMAMLANDI!\n\n"
+                f"• ana dosyalar dışında herşey silinir\n"
                 f"• Silinen dosya: {total_files}\n"
-                f"• Kazanılan alan: {cleared_size_mb:.2f} MB\n\n"
-                f"Temizlenen klasörler:\n• " + "\n• ".join(cleared_dirs)
+                f"• Kazanılan alan: {cleared_size_mb:.2f} MB\n"
+                f"• Klasörler: {' | '.join(cleared_dirs)}"
             )
         else:
-            result_text = "✅ Temizlenecek dosya bulunamadı."
+            result_text = "✅ Temizlenecek dosya yok."
         
         await message.answer(result_text)
         
-    except Exception:
-        await message.answer("❌ Temizlik işlemi başarısız oldu.")
+    except Exception as e:
+        await message.answer(f"❌ Temizlik başarısız: {str(e)}")
 
+"""Sadece logları temizle
 async def clear_logs(message: types.Message):
-    """Sadece log dosyalarını temizle"""
     try:
         cleared_files, cleared_size = await FileManager.cleanup_directory(
-            config.paths.LOGS_DIR, 
+            config.paths.LOGS_DIR,
             keep=[]
         )
         
         if cleared_files > 0:
             cleared_size_mb = cleared_size / (1024 * 1024)
             result_text = (
-                f"📝 Log temizliği tamamlandı!\n\n"
-                f"• Silinen dosya: {cleared_files}\n"
+                f"📝 LOG TEMİZLİĞİ TAMAMLANDI!\n\n"
+                f"• Silinen log: {cleared_files}\n"
                 f"• Kazanılan alan: {cleared_size_mb:.2f} MB"
             )
         else:
-            result_text = "✅ Temizlenecek log dosyası bulunamadı."
+            result_text = "✅ Temizlenecek log yok."
         
         await message.answer(result_text)
         
-    except Exception:
-        await message.answer("❌ Log temizleme işlemi başarısız oldu.")
+    except Exception as e:
+        await message.answer(f"❌ Log temizleme başarısız: {str(e)}")
+"""
+
+async def clear_logs(message: types.Message):
+    """Sadece logları temizle"""
+    try:
+        cleared_files, cleared_size = await FileManager.cleanup_directory(
+            config.paths.LOGS_DIR,
+            keep=[],
+            recursive=True  # Alt dizinleri de temizle
+        )
+        
+        if cleared_files > 0:
+            cleared_size_mb = cleared_size / (1024 * 1024)
+            result_text = (
+                f"📝 LOG TEMİZLİĞİ TAMAMLANDI!\n\n"
+                f"• Silinen log: {cleared_files}\n"
+                f"• Kazanılan alan: {cleared_size_mb:.2f} MB"
+            )
+        else:
+            # Log dizinindeki dosyaları kontrol et
+            log_dir = config.paths.LOGS_DIR
+            all_files = list(log_dir.rglob('*.*'))
+            if all_files:
+                file_list = "\n".join([f"- {f.name}" for f in all_files if f.is_file()])
+                result_text = f"✅ Loglar temizlendi veya boş. Mevcut dosyalar:\n{file_list}"
+            else:
+                result_text = "✅ Log klasörü boş."
+        
+        await message.answer(result_text)
+        
+    except Exception as e:
+        await message.answer(f"❌ Log temizleme başarısız: {str(e)}")
